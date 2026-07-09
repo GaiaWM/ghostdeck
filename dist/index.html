@@ -1,0 +1,50 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>GhostDeck</title>
+<style>
+body{background:#0b0e15;color:#e9e3d3;font:13px/1.6 ui-monospace,Menlo,Consolas,monospace;
+  display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+.box{max-width:420px;width:92%;text-align:center}
+h1{font-size:15px;letter-spacing:.25em;font-weight:400}
+h1 b{color:#6ecdbd;font-weight:400}
+p{color:#96917f}
+.gw{display:block;width:100%;margin:10px 0;padding:12px 14px;text-align:left;cursor:pointer;
+  background:#101521;border:1px solid #242c3d;border-radius:8px;color:#e9e3d3;font:inherit}
+.gw:hover{border-color:#6ecdbd}
+.gw small{display:block;color:#5c5a4f;font-size:11px}
+input{width:100%;box-sizing:border-box;background:#101521;border:1px solid #242c3d;color:#e9e3d3;
+  border-radius:8px;padding:11px 14px;font:inherit;margin-top:10px}
+input:focus{outline:1px solid #6ecdbd}
+#resume{color:#5c5a4f;font-size:11px;min-height:1.6em;margin-top:14px}
+#resume a{color:#6ecdbd}
+</style>
+<div class="box">
+  <h1>👻 <b>GHOSTDECK</b></h1>
+  <p>which world gateway?</p>
+  <button class="gw" onclick="go('https://svc.ingmmo.com/my/')">🌐 svc.ingmmo.com
+    <small>the shared cloud world</small></button>
+  <button class="gw" onclick="go(document.getElementById('lh').value)">🖥 localhost
+    <small>a gateway running on this machine</small></button>
+  <input id="lh" value="http://localhost:8090/my/" spellcheck="false"
+         onkeydown="if(event.key==='Enter')go(this.value)">
+  <div id="resume"></div>
+</div>
+<script>
+function norm(u){u=(u||'').trim();if(!u)return null;
+  if(!/^https?:\/\//.test(u))u='http://'+u;
+  if(!/\/my\/?$/.test(u))u=u.replace(/\/+$/,'')+'/my/';
+  return u.replace(/\/my$/,'/my/')}
+function go(u){u=norm(u);if(!u)return;
+  localStorage.setItem('gd_gateway',u);location.replace(u)}
+// remembered gateway: auto-connect unless the user intervenes
+const last=localStorage.getItem('gd_gateway');
+if(last){
+  let n=3;const r=document.getElementById('resume');
+  const t=setInterval(()=>{
+    if(--n<0){clearInterval(t);location.replace(last);return}
+    r.innerHTML='reconnecting to <b>'+last+'</b> in '+(n+1)+'… <a href="#" id="stay">stay here</a>';
+    document.getElementById('stay').onclick=e=>{e.preventDefault();clearInterval(t);r.textContent=''};
+  },1000);
+  document.getElementById('lh').value=/localhost|127\.0\.0\.1/.test(last)?last:document.getElementById('lh').value;
+}
+</script>

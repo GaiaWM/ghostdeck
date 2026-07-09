@@ -1,0 +1,7 @@
+src-tauri/target/
+out/
+out-windows/
+out-macos/
+*.log
+.DS_Store
+ghostdeck-linux-x86_64

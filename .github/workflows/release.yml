@@ -1,0 +1,56 @@
+name: release
+# Builds GhostDeck for Linux, Windows and macOS (universal) on a version tag
+# and attaches the installers to a GitHub Release. Everything is unsigned
+# except macOS's ad-hoc signature from the toolchain — add signing secrets
+# later (Windows cert / Apple Developer ID) when distribution warrants it.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            args: ""
+          - platform: windows-latest
+            args: ""
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
+    runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: linux webview deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: macos universal targets
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "GhostDeck ${{ github.ref_name }}"
+          releaseBody: >
+            Desktop shell for your GaiaWM ghosts. Unsigned builds: Windows
+            SmartScreen will warn; on macOS right-click → Open the first time.
+          releaseDraft: false
+          args: ${{ matrix.args }}

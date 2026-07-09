@@ -1,0 +1,142 @@
+# syntax=docker/dockerfile:1
+# Dockerized GhostDeck build — no Rust/webkit toolchain needed on the host.
+#
+#   cd ghostdeck
+#   docker build -f Dockerfile.build --target bundles -o out .           # linux
+#   docker build -f Dockerfile.build --target win-bundles -o out-windows .  # windows (cross)
+#   docker build -f Dockerfile.build --target mac-bundles -o out-macos .    # macos (cross)
+#
+# Linux out/: bundle/{deb,rpm,appimage}/* + bin/ghostdeck (x86_64).
+# Windows out-windows/: nsis/GhostDeck_*_x64-setup.exe + bin/ghostdeck.exe
+# (cross-compiled with cargo-xwin against the MS CRT/SDK; installer pulls
+# the WebView2 runtime at install time — Tauri's downloadBootstrapper default).
+# macOS out-macos/: GhostDeck_*_universal.app.tar.gz (x86_64+arm64 lipo'd,
+# ad-hoc signed — arm64 macOS refuses unsigned code). No DMG: hdiutil only
+# exists on real macOS. Gatekeeper will still quarantine the download
+# (right-click → Open) until the app is Developer-ID signed + notarized.
+
+FROM rust:1-bookworm AS build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libssl-dev \
+        libayatana-appindicator3-dev libxdo-dev \
+        build-essential curl wget file xdg-utils ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Prebuilt tauri-cli (fall back to cargo install if the asset moves)
+ARG TAURI_CLI_VERSION=2.11.4
+RUN curl -fsSL -o /tmp/cargo-tauri.tgz \
+        "https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v${TAURI_CLI_VERSION}/cargo-tauri-x86_64-unknown-linux-gnu.tgz" \
+        && tar -xzf /tmp/cargo-tauri.tgz -C /usr/local/cargo/bin && rm /tmp/cargo-tauri.tgz \
+    || cargo install tauri-cli --version "${TAURI_CLI_VERSION}" --locked
+
+WORKDIR /app
+COPY dist ./dist
+COPY src-tauri ./src-tauri
+WORKDIR /app/src-tauri
+
+# linuxdeploy (AppImage) can't use FUSE inside a container; NO_STRIP because
+# linuxdeploy's strip pass conflicts with the profile's strip=true.
+ENV APPIMAGE_EXTRACT_AND_RUN=1 NO_STRIP=true
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/app/src-tauri/target \
+    cargo tauri build --bundles deb rpm appimage \
+    && mkdir -p /out/bin \
+    && cp -r target/release/bundle /out/bundle \
+    && cp target/release/ghostdeck /out/bin/ghostdeck
+
+FROM scratch AS bundles
+COPY --from=build /out/ /
+
+
+# ---------- Windows cross-build (x86_64-pc-windows-msvc via cargo-xwin) ----------
+
+FROM rust:1-bookworm AS winbuild
+
+# clang/lld link against the MS CRT that xwin fetches; llvm provides llvm-rc
+# (resource embedding: exe icon + version info); nsis builds the installer.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        clang lld llvm nsis curl wget file ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rustup target add x86_64-pc-windows-msvc
+
+ARG TAURI_CLI_VERSION=2.11.4
+RUN curl -fsSL -o /tmp/cargo-tauri.tgz \
+        "https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v${TAURI_CLI_VERSION}/cargo-tauri-x86_64-unknown-linux-gnu.tgz" \
+        && tar -xzf /tmp/cargo-tauri.tgz -C /usr/local/cargo/bin && rm /tmp/cargo-tauri.tgz \
+    || cargo install tauri-cli --version "${TAURI_CLI_VERSION}" --locked
+
+RUN cargo install cargo-xwin --locked
+
+WORKDIR /app
+COPY dist ./dist
+COPY src-tauri ./src-tauri
+WORKDIR /app/src-tauri
+
+# xwin downloads the MS CRT + Windows SDK on first run (cached below);
+# XWIN_ACCEPT_LICENSE covers the MS redistribution prompt.
+ENV XWIN_ACCEPT_LICENSE=yes
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/app/src-tauri/target \
+    --mount=type=cache,target=/root/.cache/cargo-xwin \
+    cargo tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc --bundles nsis \
+    && mkdir -p /out/bin \
+    && cp -r target/x86_64-pc-windows-msvc/release/bundle/nsis /out/nsis \
+    && cp target/x86_64-pc-windows-msvc/release/ghostdeck.exe /out/bin/ghostdeck.exe
+
+FROM scratch AS win-bundles
+COPY --from=winbuild /out/ /
+
+
+# ---------- macOS cross-build (universal x86_64+aarch64 via osxcross) ----------
+
+# rust + osxcross (apple clang/ld64 + macOS SDK) + both darwin targets preinstalled
+FROM joseluisq/rust-linux-darwin-builder:1.89.0 AS macbuild
+
+# this image's CARGO_HOME is /root/.cargo (not rust:bookworm's /usr/local/cargo)
+ARG TAURI_CLI_VERSION=2.11.4
+RUN curl -fsSL -o /tmp/cargo-tauri.tgz \
+        "https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v${TAURI_CLI_VERSION}/cargo-tauri-x86_64-unknown-linux-gnu.tgz" \
+        && tar -xzf /tmp/cargo-tauri.tgz -C /root/.cargo/bin && rm /tmp/cargo-tauri.tgz \
+    || cargo install tauri-cli --version "${TAURI_CLI_VERSION}" --locked
+
+# rcodesign: ad-hoc Mach-O signing from Linux (mandatory for arm64 macOS)
+RUN cargo install apple-codesign --locked
+
+# tauri's universal target shells out to `lipo` — osxcross ships one on PATH
+# (/usr/local/osxcross/target/bin/lipo); nothing to do.
+
+WORKDIR /app
+COPY dist ./dist
+COPY src-tauri ./src-tauri
+WORKDIR /app/src-tauri
+
+ENV CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=o64-clang \
+    CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=oa64-clang \
+    CC_x86_64_apple_darwin=o64-clang \
+    CXX_x86_64_apple_darwin=o64-clang++ \
+    CC_aarch64_apple_darwin=oa64-clang \
+    CXX_aarch64_apple_darwin=oa64-clang++
+
+# tauri-cli refuses macOS bundle types on a Linux host, but a .app is just a
+# directory layout — build both arches with cargo, lipo, assemble by hand.
+RUN --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/app/src-tauri/target \
+    cargo build --release --target x86_64-apple-darwin \
+    && cargo build --release --target aarch64-apple-darwin \
+    && APP=/tmp/GhostDeck.app \
+    && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" \
+    && lipo -create -output "$APP/Contents/MacOS/ghostdeck" \
+         target/x86_64-apple-darwin/release/ghostdeck \
+         target/aarch64-apple-darwin/release/ghostdeck \
+    && cp macos/Info.plist "$APP/Contents/Info.plist" \
+    && cp icons/icon.icns "$APP/Contents/Resources/icon.icns" \
+    && rcodesign sign "$APP" \
+    && mkdir -p /out \
+    && cp -r "$APP" /out/GhostDeck.app \
+    && cd /tmp \
+    && tar -czf "/out/GhostDeck_$(grep -m1 '^version' /app/src-tauri/Cargo.toml | cut -d'"' -f2)_universal.app.tar.gz" GhostDeck.app
+
+FROM scratch AS mac-bundles
+COPY --from=macbuild /out/ /
