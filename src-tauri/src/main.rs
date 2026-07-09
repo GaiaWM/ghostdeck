@@ -5,6 +5,10 @@
 
 fn main() {
     tauri::Builder::default()
+        // http plugin: lets the (remote) owner page reach the player's LOCAL
+        // llm endpoints (ollama etc.) without webview CORS/mixed-content —
+        // scoped to localhost only in capabilities/remote-mind.json.
+        .plugin(tauri_plugin_http::init())
         .run(tauri::generate_context!())
         .expect("error while running GhostDeck");
 }

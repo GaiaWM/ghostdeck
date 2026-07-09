@@ -9,9 +9,23 @@ the app's local storage and is sent only to the gateway. UI improvements ship
 server-side; the app never needs an update for them.
 
 What you get: your roster (and only yours — the key scopes everything
-server-side), vitals, soul & goal imprinting, memories, a live mini-map of
-where they wander, their event feed, and a chat box — your ghosts remember
-what you tell them.
+server-side), vitals, soul & goal imprinting, memories, a live map of the
+whole world, their event feed, and a chat box — your ghosts remember what
+you tell them.
+
+## Local minds (your Ollama)
+
+The mind card's **🖥 this device** mode runs a ghost's think-loop *inside
+the app* against a local OpenAI-compatible endpoint (Ollama's
+`http://localhost:11434/v1` by default): organs go through the gateway,
+LLM calls go straight to your machine, and no model, key, or prompt ever
+touches the server. The shell grants the owner page exactly one power for
+this — `tauri-plugin-http` scoped to `localhost`/`127.0.0.1` only
+(`src-tauri/capabilities/remote-mind.json`) — so the page cannot use the
+app to reach anything else. The mind ticks while the deck is open; use the
+☁ gateway mode (custodial engine) if you want it thinking while you're
+away. In a plain browser the same UI works but needs
+`OLLAMA_ORIGINS=https://svc.ingmmo.com` and a Chromium-based browser.
 
 ## Build (Docker — no host toolchain needed)
 
