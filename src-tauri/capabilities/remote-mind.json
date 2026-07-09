@@ -6,8 +6,11 @@
   "remote": {
     "urls": [
       "https://svc.ingmmo.com",
+      "https://svc.ingmmo.com/*",
       "http://localhost:*",
-      "http://127.0.0.1:*"
+      "http://localhost:*/*",
+      "http://127.0.0.1:*",
+      "http://127.0.0.1:*/*"
     ]
   },
   "permissions": [
