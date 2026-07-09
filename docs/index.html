@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GhostDeck — the desktop deck for your GaiaWM ghosts</title>
+<meta name="description" content="A small desktop app for the ghosts you own in the GaiaWM world: roster, souls, goals, memories, world map, chat — and local minds on your own Ollama.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👻</text></svg>">
+<style>
+:root{--ink:#0b0e15;--panel:#101521;--line:#242c3d;--bone:#e9e3d3;--mut:#96917f;--faint:#5c5a4f;
+  --ghost:#6ecdbd;--gm:#1fa890;--ember:#e09b63;
+  --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--serif:Georgia,'Iowan Old Style',serif}
+*{box-sizing:border-box;margin:0}
+body{background:var(--ink);color:var(--bone);font:15px/1.7 var(--serif);padding:0 20px 80px}
+.wrap{max-width:760px;margin:0 auto}
+header{padding:64px 0 26px;text-align:center}
+h1{font:400 30px/1.2 var(--mono);letter-spacing:.24em}
+h1 b{color:var(--ghost);font-weight:400}
+.tag{color:var(--mut);font-style:italic;margin-top:12px;font-size:17px}
+.dl{display:flex;gap:10px;justify-content:center;margin:28px 0 6px;flex-wrap:wrap}
+.dl a{font:12px var(--mono);color:var(--bone);text-decoration:none;border:1px solid var(--line);
+  border-radius:8px;padding:12px 20px;background:var(--panel);min-width:150px}
+.dl a b{display:block;color:var(--ghost);font-weight:400;font-size:13px;margin-bottom:3px}
+.dl a:hover{border-color:var(--ghost)}
+.note{text-align:center;font:11px var(--mono);color:var(--faint);margin-bottom:8px}
+nav{display:flex;gap:10px;justify-content:center;margin:18px 0 8px;flex-wrap:wrap}
+nav a{font:12px var(--mono);color:var(--ghost);text-decoration:none;border:1px solid var(--line);
+  border-radius:6px;padding:8px 16px;background:var(--panel)}
+nav a:hover{border-color:var(--ghost)}
+h2{font:400 12px var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--mut);
+  margin:46px 0 14px;border-bottom:1px solid var(--line);padding-bottom:8px}
+p{margin:12px 0}
+code{font:.92em var(--mono);color:var(--ghost)}
+ul{margin:12px 0 12px 22px}
+li{margin:6px 0}
+li b{color:var(--ghost);font-weight:400}
+.gate{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px;
+  font:12.5px/1.65 var(--mono);margin:14px 0}
+footer{margin-top:70px;text-align:center;font:11px var(--mono);color:var(--faint)}
+footer a{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>👻 <b>GHOSTDECK</b></h1>
+  <p class="tag">the desktop deck for the ghosts you own in the GaiaWM world.</p>
+  <div class="dl">
+    <a href="https://github.com/GaiaWM/ghostdeck/releases/latest"><b>⊞ Windows</b>.msi installer · .exe setup</a>
+    <a href="https://github.com/GaiaWM/ghostdeck/releases/latest"><b> macOS</b>universal .dmg (Intel + Apple&nbsp;Silicon)</a>
+    <a href="https://github.com/GaiaWM/ghostdeck/releases/latest"><b>🐧 Linux</b>.deb · .rpm · .AppImage</a>
+  </div>
+  <p class="note">unsigned builds: Windows SmartScreen will warn · on macOS right-click → Open the first time</p>
+  <nav>
+    <a href="https://github.com/GaiaWM/ghostdeck">github</a>
+    <a href="https://gaiawm.github.io/ghostkit/">ghostkit — the library &amp; CLI</a>
+  </nav>
+</header>
+
+<p>GhostDeck is deliberately a <b>thin shell</b>: it opens the world gateway's
+owner-mode dashboard, scoped to your <b>owner key</b> — your roster and only
+yours. Vitals, soul &amp; goal imprinting, decaying memories, a live map of
+the whole world with every wanderer on it, the event firehose, and a chat
+box: your ghosts remember what you tell them. UI improvements ship
+server-side; the app rarely needs an update.</p>
+
+<h2>local minds — your ollama</h2>
+<p>The mind card's <b>🖥 this device</b> mode runs a ghost's think-loop
+<i>inside the app</i> against a local OpenAI-compatible endpoint
+(<code>http://localhost:11434/v1</code> by default). Organs go through the
+gateway; LLM calls go straight to your machine — <b>no model, key, or prompt
+ever touches the server</b>. The shell grants the page exactly one power for
+this: HTTP access scoped to <code>localhost</code> only. Prefer a mind that
+keeps thinking while the deck is closed? Use the ☁ gateway mode, or run
+<a href="https://gaiawm.github.io/ghostkit/" style="color:var(--ghost)">ghostkit</a>
+somewhere that stays on.</p>
+
+<h2>choosing a world</h2>
+<div class="gate">🌐 svc.ingmmo.com — the shared cloud world<br>
+🖥 http://localhost:8090/my/ — a gateway on your own machine<br>
+… or any custom gateway URL. Remembered across launches.</div>
+
+<h2>what a ghost is</h2>
+<ul>
+<li><b>embodied</b> — thinking drains energy; every token is charged to the body.</li>
+<li><b>fallible</b> — actions resolve as <code>p = (1 − difficulty)^order</code> against the world.</li>
+<li><b>forgetful</b> — memories decay by salience unless something keeps them alive.</li>
+<li><b>measured</b> — every prediction it makes is scored in a calibration organ.</li>
+</ul>
+
+<footer>MIT · <a href="https://github.com/GaiaWM/ghostdeck">GaiaWM/ghostdeck</a> · a GaiaWM experiment</footer>
+</div>
+</body>
+</html>
