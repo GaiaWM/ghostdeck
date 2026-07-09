@@ -1,6 +1,6 @@
 [package]
 name = "ghostdeck"
-version = "0.2.1"
+version = "0.2.2"
 description = "GhostDeck — the dashboard for the GaiaWM ghosts you own"
 edition = "2021"
 license = "MIT"
@@ -10,7 +10,11 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2.11", features = [] }
-tauri-plugin-http = "2"
+# unsafe-headers: let the owner page set an Origin header on its LOCAL llm
+# calls — ollama's server-side allowlist 403s the page's real origin otherwise.
+# The http scope stays localhost-only, so this only loosens headers toward
+# the player's own machine.
+tauri-plugin-http = { version = "2", features = ["unsafe-headers"] }
 
 [profile.release]
 strip = true
